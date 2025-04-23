@@ -1,7 +1,19 @@
-
-
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import entropy
+import pandas as pd
+
+'''
+This method computes a unequality index over a pandas dataframe column.
+param df the dataframe
+param column the column we will apply the inequality
+param index_function the index we want to apply, is a kafkanator function such as fini, robin_hood, theil L or T.
+param kwargs, auxiliar parameters the index_function could use, for example if theil_t, we can input here the base.
+return a float representing the inequality index.
+'''
+def index_on_dataframe_column(df: pd.DataFrame, column: str, index_function: callable, **kwargs ) -> float :
+    sorted_df = df.sort_values(by=[column])
+    return index_function( np.array(sorted_df[column].values ) , **kwargs )
 
 '''
 Computes the gini index from a ascending order gains array
@@ -22,7 +34,7 @@ tha must be redistributed in population, in order to be egalitarian.
 
 parameters : x a vector representing the gains of the population.
 i.e [5,3,5,6,9] means that one person has 5 gains, the next one three and so on.
-Total gain will be sum(x)
+Total gain will be sum(x), total population will be len(x)
 
 return : a number between 0 and 1 meaning the percentage of the income that must
 be redistributed. A number close to 1 means high concentration of wealth in few hands
@@ -37,14 +49,24 @@ def robin_hood(income_array):
     rh_index = sum(deltas) / sum(income_array)
     return rh_index
 
-
+'''
+Computes the Theil L index
+param income_array array of incomes.
+return the theil L index
+'''
 def theil_index_L(income_array):
     x_mean = sum(income_array)/len(income_array)
     divided_mean = [ np.log(x_mean / i) for i in income_array ]
     summin = sum(divided_mean)
     return summin/len(income_array)
 
-
+'''
+Computes the Theil T index
+param income_array array of incomes.
+param arrey_type props if proportions, this is all numbers between 0 and 1, and all must sum up to 1., gains if array of integers representing gains.
+param base_entropy the base to compute the entropy, remember that entropy is a family of functions with diferent bases, e constant by default,
+return the theil T index
+'''
 def theil_index_T(income_array,array_type='props',base_entropy=np.e):
     if array_type == 'props':
         return np.log(len(income_array)) - entropy(income_array,base=base_entropy)
