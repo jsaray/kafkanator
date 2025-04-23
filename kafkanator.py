@@ -3,6 +3,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+'''
+Computes the gini index from a ascending order gains array
+param x an array containing gains sorted in ascending order
+for example [1,1,2,2,3,3,3] means a population of 7 people, the first one
+gain is 1, the last one 3 and so on.
+return gini index of this array
+'''
 def gini(x):
     total = 0
     for i, xi in enumerate(x[:-1], 1):
@@ -46,13 +53,34 @@ def theil_index_T(income_array,array_type='props',base_entropy=np.e):
         return np.log(len(income_array)) - entropy(props_array,base=base_entropy)
 
 
-
-def lorentz_curve ( population , income ):
-    perc_population = np.array([x/sum(population) for x in population])
-    perc_income = np.array([x/sum(income) for x in income])
+'''
+This function computes the lorentz curve coordinates from a population and income array
+param: population an array containing in position i a number representing the amount of
+people earning income[i]
+param: income an array containing in position i a number representing the earning of the people
+in population[i].
+param: gini flag to True if you want the gini computed on the position 3 of returning tuple.
+Example lorentz_curve ( [50,20,30,10],[100,300,200,30]) means that 50 people earn 100, 20 people earn 300 and so on.
+return 2-tuple with lorentz_curve coordinates to be plotted using the visual framework of your choice. If you set gini flag to
+true, it wil be a 3-tuple, in the third position you find the gini coefficient.
+'''
+def lorentz_curve ( population , income ,gini_index=False):
+    assert( len(population) == len(income))
+    zippedSortedArray = sorted( list( zip( population , income) ) , key= lambda x: x[1] )
+    print ( ' sorted array ', zippedSortedArray)
+    perc_population = np.array([p/sum(population) for (p,g) in zippedSortedArray])
+    perc_income = np.array([g/sum(income) for (p,g) in zippedSortedArray])
     cum_perc_pop = np.concatenate(([0], perc_population.cumsum()), axis=None)
     cum_perc_inc = np.concatenate(([0],perc_income.cumsum()), axis=None)
-    return (cum_perc_pop,cum_perc_inc)
+    if gini_index:
+        arrayGini = []
+        for (p,g) in zippedSortedArray:
+            arrayGini = np.concatenate( ( arrayGini , np.repeat(g,p)  ) )
+        print ( ' gini input ', arrayGini )
+        g_index = gini(np.array(arrayGini))
+        return (cum_perc_pop,cum_perc_inc,g_index)
+    else:
+        return (cum_perc_pop,cum_perc_inc)
 
 def gini_per_cluster(df,gb_column,income_column):
     salary_groups = df.groupby ([gb_column]) 
