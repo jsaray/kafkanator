@@ -104,14 +104,29 @@ def lorentz_curve ( population , income ,gini_index=False):
     else:
         return (cum_perc_pop,cum_perc_inc)
 
-def gini_per_cluster(df,gb_column,income_column):
-    salary_groups = df.groupby ([gb_column]) 
-    setOfCats = set(df[gb_column].values)
-    ginis = []
+'''
+Make clusters over a data frame and apply an index on each of them .
+parameter df a data frame where you have data about gains to be divided according to a column.
+parameter group_by_column the column you will perform your group by.
+paramerer income_column column where you have the gains/incomes. For the moment only is allowed integers and not proportions.
+parameter index the type of inequality index you will use , you have gini, theil-t , theil-l, and robin hood.
+parameter kwargs optional, used in cas you use theil - T, you can put here auxiliar parameter such as entropy base. 
+'''
+def index_per_cluster(df,group_by_column,income_column,index='gini', **kwargs ):
+    salary_groups = df.groupby ([group_by_column]) 
+    setOfCats = set(df[group_by_column].values)
+    indexes = []
     for s in setOfCats:
         subgroup = df.iloc[salary_groups.groups[s],:]
         incomes = sorted(subgroup[income_column].values)
         print ( 'sorted incomes ',s, ' ', incomes)
-        g = gini(incomes)
-        ginis.append((s,g))
-    return ginis
+        if index == 'gini':
+            g = gini(incomes)
+        elif index == 'theil-t':
+            g = theil_index_T ( incomes,**kwargs )
+        elif index == 'theil-l':
+            g = theil_index_L ( incomes )               
+        elif index == 'robin-hood':
+            g = robin_hood ( incomes )
+        indexes.append((s,g))
+    return indexes
