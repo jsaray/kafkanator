@@ -8,4 +8,4 @@ git clone git@github.com:jsaray/kafkanator.git
 Please check doc/user-guide.pdf
 
 # Python doc
-Work in progress.
+https://dataforpeople.com.co/site/kafkanator-reference/index.html
