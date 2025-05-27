@@ -1,12 +1,12 @@
 
 import pandas as pd
+from sklearn.metrics import confusion_matrix
 
 def statistical_parity_data(df,sensitive_attribute,predict_column):
-	"""This method computes a table that summarizes predictions over sensitive attributes.
+    """This method computes a table that summarizes predictions over sensitive attributes.
 
     Args:
-        df (pandas DataFrame): dataframe . It must contain one sensitive attribute column S containing {s1,s2,s3,...,sn} different sensitive attributes values and one prediction column P containing different categorical
-        predictions {p1,p2,..,pn }.
+        df (pandas DataFrame): dataframe . It must contain one sensitive attribute column S containing {s1,s2,s3,...,sn} different sensitive attributes values and one prediction column P containing different categorical predictions {p1,p2,..,pn }.
         sensitive_attribute (str): The column designing the sensitive attribute : sex, age, handicap, nationality etc.
         predict_column (str):  The column for predictions.
     
@@ -25,14 +25,14 @@ def statistical_parity_data(df,sensitive_attribute,predict_column):
             barplot_data = pd.DataFrame(data=bpdata,columns=['attr','prediction','number'])
     return barplot_data
 
-def fpr_fnr(df,sensitive_attribute):
-	"""This method computes false positive rate and false negative rate on subpopulations ( see <>HERE<> ).
+def fpr_fnr(df,sensitive_attribute,predict_column,reality_column):
+    """This method computes false positive rate and false negative rate on subpopulations ( see <>HERE<> ).
 
     Args:
-        df (pandas DataFrame): dataframe . It must contain one sensitive attribute column S containing {s1,s2,s3,...,sn} different sensitive attributes values and one prediction column P containing a
-        binary prediction {1,0}.
+        df (pandas DataFrame): dataframe . It must contain one sensitive attribute column S containing {s1,s2,s3,...,sn} different sensitive attributes values and one prediction column P containing a binary prediction {1,0}.
         sensitive_attribute (str): The column designing the sensitive attribute : sex, age, handicap, nationality etc.
-    
+        predict_column (str): the column where dataframe df stores prediction.
+        reality_column (str): the column where dataframe df stores what happens in reality.
     Returns:
         (fpr,fnr) : a tuple containing in position 0 the false positive rate, and in position 1 the false negative rate.
     """
@@ -47,7 +47,7 @@ def fpr_fnr(df,sensitive_attribute):
     print ( ' Dictionnary FP ', dictret_fpr, ' FN ',dictret_fnr)
     for (k,v) in groups :
         print ( ' heigh of v ', v.shape[0], ' k is ', k)
-        cm = confusion_matrix( v['default'] ,  v['Prediction'] )
+        cm = confusion_matrix( v[reality_column] ,  v[predict_column] )
         FPR = cm[0][1] / (cm[0][1] + cm[0][0])
         FNR = cm[1][0] / ( cm[1][0] + cm[1][1])
         dictret_fpr[k[0]] = FPR

@@ -1,5 +1,5 @@
 
-def interval_categorize(df, column, diction ):
+def categorize_interval(df, column, diction ):
     """This method applies a function on a pandas data frame column, the goal is to replace integer intervals by a categorical values.
 
     Args:
@@ -16,3 +16,8 @@ def interval_categorize(df, column, diction ):
             if v[0] <= int(x) and int(x) <= v[1] :
                 return k
     return df[column].apply(lambda x: interval_function(x,diction))
+
+def rename_column ( df, column , dictionn ):
+    def rename_function(x,diction):
+        return diction[x]
+    return df[column].apply(lambda x : rename_function(x,dictionn))
