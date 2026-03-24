@@ -2,7 +2,7 @@
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 from collections import Counter
-from kafkanator.util import transform_dict_keys_to_str,highlight_row
+from kafkanator.util import transform_dict_keys_to_str,row_highlighting
 import numpy as np
 
 def statistical_parity_data(df,sensitive_attribute,predict_column,reality_column):
@@ -178,7 +178,7 @@ def build_last_column(df):
             df.iloc[i,2] = d
     return df
 
-def fairness_dataviz(dataset,sensitive_attribute,predict_column,reality_column):
+def fairness_metrics_table(dataset,sensitive_attribute,predict_column,reality_column):
     """This method compute a fairness measures summary table.
     Args:
         dataset (pandas DataFrame): dataframe . It must contain one or more sensitive attribute columns S 
@@ -199,12 +199,9 @@ def fairness_dataviz(dataset,sensitive_attribute,predict_column,reality_column):
         disparate_impact(dataset,sensitive_attribute,predict_column,reality_column))
 
         sp_strkeys = transform_dict_keys_to_str(sp)
-        print ('ks ', sp_strkeys)
         lcols = list(sp_strkeys.keys())
         lcols.append('DELTA')
-        print ( ' lcosl ', lcols)
         df = pd.DataFrame(index=indices,columns=lcols)
-        print ('sta party output ',sp)
         for (k,v) in sp.items():
             df.loc['DEMOGRAPHIC PARITY - P1',k] = sp[k]
 
@@ -223,8 +220,6 @@ def fairness_dataviz(dataset,sensitive_attribute,predict_column,reality_column):
         di_strkeys = transform_dict_keys_to_str(di)
         for (k,v) in di_strkeys.items():
             df.loc['DISPARATE IMPACT - PREVALENCE',k] = di_strkeys[k]
-
-        print ( ' df shape ',df.shape)
         colormap = []
         build_df = build_last_column(df)
         return build_df
@@ -262,8 +257,6 @@ def fairness_dataviz(dataset,sensitive_attribute,predict_column,reality_column):
         di_strkeys = transform_dict_keys_to_str(di)
         for (k,v) in di_strkeys.items():
             df.loc['DISPARATE IMPACT - PREVALENCE',k] = di_strkeys[k]
-
-        print ( ' df shape ',df.shape)
         colormap = []
         build_df = build_last_column(df)
         return build_df
