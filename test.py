@@ -1,6 +1,6 @@
 
 import unittest
-from kafkanator import *
+from inequality import *
 
 class TestCalculations(unittest.TestCase):
 

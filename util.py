@@ -46,7 +46,7 @@ def compareRatio(d,s):
     elif 0.8 <= d  :
         return ['background-color : green' for v in s ]
     
-def row_highlighting(s):
+def default_row_highlighting(s):
     """In house method to beautify fairness metrics dataframe providing a 3 color palette (green,yellow,red) depending on 
     the fairness gap in your model.
 
@@ -54,13 +54,11 @@ def row_highlighting(s):
         s DataFrame row.
     """
     inde = s.index
-    d = s.loc['DELTA']
+    d = abs( float(s.loc['0']) - float(s.loc['1'] ))
     if 'PREVALENCE' in inde :
         return compareRatio(d,s)
     else:
+        print ( 'd is ', str(d))
         if type(d) == float or isinstance(d,np.floating ):
+            print ( ' in if')
             return compareSubstraction(d,s)
-        else:
-            ma = max(float(d.split(',')[0]) , float(d.split(',')[1]) )
-            print ( ' ma is ' , ma)
-            return compareSubstraction(ma,s)

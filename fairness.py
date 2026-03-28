@@ -2,7 +2,7 @@
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 from collections import Counter
-from kafkanator.util import transform_dict_keys_to_str,row_highlighting
+from kafkanator.util import transform_dict_keys_to_str,default_row_highlighting
 import numpy as np
 
 def statistical_parity_data(df,sensitive_attribute,predict_column,reality_column):
@@ -151,34 +151,39 @@ def fpr_fnr(df,sensitive_attribute,predict_column,reality_column):
         dictret_fnr[k[0]] = FNR
     return dictret_fpr, dictret_fnr
 
-def build_last_column(df):
+def build_last_column(df,label_last_column):
     """This PRIVATE method compute last column of summarized fairness measure table.
     Args:
         df (pandas DataFrame): dataframe . It must contain one or more sensitive attribute columns S 
     Returns:
-        DataFrame : data frame with last column
+        list : a list with last column
     """
+    column = []
     for i in range(0,df.shape[0]):
         ind = df.index[i]
         if (ind == 'DEMOGRAPHIC PARITY - P1') or (ind == 'EQUAL OPPORTUNITY - TPR') or (ind == 'PREDICTIVE PARITY - PPV'):
-            if len(df.columns) == 3:
+            print ( ' first if ', str(len(df.columns)))
+            if len(df.columns) == 2:
                 d = abs(df.iloc[i,0] - df.iloc[i,1])
-                df.iloc[i,2] = d
-            elif len(df.columns) > 3:
+                column.append(d)
+            elif len(df.columns) > 2:
                 d = max(df.iloc[i]) - min(df.iloc[i])
-                df.iloc[i,len(df.columns)-1] = d
+                column.append(d)
         elif ind == 'EQUALIZED ODDS - (TPR,FPR)':
+            print ( ' second if ')
             tu1 = [float(x) for x in df.iloc[i,0].split(',')]
             tu2 =[float(x) for x in df.iloc[i,1].split(',')]
             tu = np.subtract ( tu1 ,tu2) 
             tupled = tuple(np.absolute(tu))
-            df.iloc[i,2] = ','.join([str(x) for x in tupled])
+            column.append(','.join([str(x) for x in tupled]))
         elif ind == 'DISPARATE IMPACT - PREVALENCE':
+            print ( ' third if ')
             d = (df.iloc[i,0] /  df.iloc[i,1]) if df.iloc[i,0] < df.iloc[i,1] else  (df.iloc[i,1] / df.iloc[i,0])
-            df.iloc[i,2] = d
-    return df
+            column.append(d)
+    print ( 'retriv column with len ',len(column))
+    return column
 
-def fairness_metrics_table(dataset,sensitive_attribute,predict_column,reality_column):
+def fairness_metrics_table(dataset,sensitive_attribute,predict_column,reality_column,aggregate_metrics=False,function_last_column=None,label_last_column='DELTA'):
     """This method compute a fairness measures summary table.
     Args:
         dataset (pandas DataFrame): dataframe . It must contain one or more sensitive attribute columns S 
@@ -189,74 +194,35 @@ def fairness_metrics_table(dataset,sensitive_attribute,predict_column,reality_co
     Returns:
         DataFrame : a dataframe summarizing fairness measures .
     """
-    if type(sensitive_attribute) != list:
-        colormap = []
-        indices = ['DEMOGRAPHIC PARITY - P1','EQUAL OPPORTUNITY - TPR','PREDICTIVE PARITY - PPV','EQUALIZED ODDS - (TPR,FPR)','DISPARATE IMPACT - PREVALENCE']
-        (sp,eo,pp,eodd,di) = (statistical_parity(dataset,sensitive_attribute,predict_column,reality_column) , 
-        equal_opportunity(dataset,sensitive_attribute,predict_column,reality_column),
-        predictive_parity(dataset,sensitive_attribute,predict_column,reality_column),
-        equalized_odds(dataset,sensitive_attribute,predict_column,reality_column),
-        disparate_impact(dataset,sensitive_attribute,predict_column,reality_column))
-
-        sp_strkeys = transform_dict_keys_to_str(sp)
-        lcols = list(sp_strkeys.keys())
-        lcols.append('DELTA')
-        df = pd.DataFrame(index=indices,columns=lcols)
-        for (k,v) in sp.items():
-            df.loc['DEMOGRAPHIC PARITY - P1',k] = sp[k]
-
-        eo_strkeys = transform_dict_keys_to_str(eo)
-        for (k,v) in eo_strkeys.items():
-            df.loc['EQUAL OPPORTUNITY - TPR',k] = eo_strkeys[k]
-
-        pp_strkeys = transform_dict_keys_to_str(pp)
-        for (k,v) in pp_strkeys.items():
-            df.loc['PREDICTIVE PARITY - PPV',k] = pp_strkeys[k]
-
-        eodd_strkeys = transform_dict_keys_to_str(eodd)
-        for (k,v) in eodd_strkeys.items():
-            df.loc['EQUALIZED ODDS - (TPR,FPR)',k] = eodd_strkeys[k]
-
-        di_strkeys = transform_dict_keys_to_str(di)
-        for (k,v) in di_strkeys.items():
-            df.loc['DISPARATE IMPACT - PREVALENCE',k] = di_strkeys[k]
-        colormap = []
-        build_df = build_last_column(df)
-        return build_df
-    else:
-        colormap = []
-        indices = ['DEMOGRAPHIC PARITY - P1','EQUAL OPPORTUNITY - TPR','PREDICTIVE PARITY - PPV','EQUALIZED ODDS - (TPR,FPR)','DISPARATE IMPACT - PREVALENCE']
-        (sp,eo,pp,eodd,di) = (statistical_parity(dataset,sensitive_attribute,predict_column,reality_column) , 
-        equal_opportunity(dataset,sensitive_attribute,predict_column,reality_column),
-        predictive_parity(dataset,sensitive_attribute,predict_column,reality_column),
-        equalized_odds(dataset,sensitive_attribute,predict_column,reality_column),
-        disparate_impact(dataset,sensitive_attribute,predict_column,reality_column))
-
-        sp_strkeys = transform_dict_keys_to_str(sp)
-        print ('ks ', sp_strkeys)
-        lcols = list(sp_strkeys.keys())
-        lcols.append('DELTA')
-        print ( ' lcosl ', lcols)
-        df = pd.DataFrame(index=indices,columns=lcols)
-        print ('sta party output ',sp)
-        for (k,v) in sp_strkeys.items():
-            df.loc['DEMOGRAPHIC PARITY - P1',k] = sp_strkeys[k]
-
-        eo_strkeys = transform_dict_keys_to_str(eo)
-        for (k,v) in eo_strkeys.items():
-            df.loc['EQUAL OPPORTUNITY - TPR',k] = eo_strkeys[k]
-
-        pp_strkeys = transform_dict_keys_to_str(pp)
-        for (k,v) in pp_strkeys.items():
-            df.loc['PREDICTIVE PARITY - PPV',k] = pp_strkeys[k]
-
-        eodd_strkeys = transform_dict_keys_to_str(eodd)
-        for (k,v) in eodd_strkeys.items():
-            df.loc['EQUALIZED ODDS - (TPR,FPR)',k] = eodd_strkeys[k]
-
-        di_strkeys = transform_dict_keys_to_str(di)
-        for (k,v) in di_strkeys.items():
-            df.loc['DISPARATE IMPACT - PREVALENCE',k] = di_strkeys[k]
-        colormap = []
-        build_df = build_last_column(df)
-        return build_df
+    colormap = []
+    indices = ['DEMOGRAPHIC PARITY - P1','EQUAL OPPORTUNITY - TPR','PREDICTIVE PARITY - PPV','DISPARATE IMPACT - PREVALENCE']
+    (sp,eo,pp,eodd,di) = (statistical_parity(dataset,sensitive_attribute,predict_column,reality_column) , 
+    equal_opportunity(dataset,sensitive_attribute,predict_column,reality_column),
+    predictive_parity(dataset,sensitive_attribute,predict_column,reality_column),
+    equalized_odds(dataset,sensitive_attribute,predict_column,reality_column),
+    disparate_impact(dataset,sensitive_attribute,predict_column,reality_column))
+    sp_strkeys = transform_dict_keys_to_str(sp)
+    print ('ks ', sp_strkeys)
+    lcols = list(sp_strkeys.keys())
+    print ( ' lcosl ', lcols)
+    df = pd.DataFrame(index=indices,columns=lcols)
+    print ('sta party output ',sp)
+    for (k,v) in sp_strkeys.items():
+        df.loc['DEMOGRAPHIC PARITY - P1',k] = sp_strkeys[k]
+    eo_strkeys = transform_dict_keys_to_str(eo)
+    for (k,v) in eo_strkeys.items():
+        df.loc['EQUAL OPPORTUNITY - TPR',k] = eo_strkeys[k]
+    pp_strkeys = transform_dict_keys_to_str(pp)
+    for (k,v) in pp_strkeys.items():
+        df.loc['PREDICTIVE PARITY - PPV',k] = pp_strkeys[k]
+    di_strkeys = transform_dict_keys_to_str(di)
+    for (k,v) in di_strkeys.items():
+        df.loc['DISPARATE IMPACT - PREVALENCE',k] = di_strkeys[k]
+    colormap = []
+    if aggregate_metrics == True :
+        assert(label_last_column!=None)
+        if function_last_column != None : 
+            df[label_last_column] =  function_last_column 
+        else:
+            df[label_last_column] = build_last_column(df,label_last_column)
+    return df
