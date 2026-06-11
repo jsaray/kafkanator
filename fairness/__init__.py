@@ -1,1 +1,2 @@
 from .simmilarity import simmilarity_fairness_hash
+from .metrics import fairness_metrics_table
