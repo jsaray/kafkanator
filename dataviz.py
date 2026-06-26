@@ -24,7 +24,7 @@ def simmilarity_fairness_3d( cleaned_hsh ) :
     margin=dict(l=0, r=0, b=0, t=40))
     return fig
 
-def simmilar_subjects_treatment_plot( data, sensitive_column, sensitive_attribute_values ,numrows,attr_sim_compas,simmilarity_distance='catnum_simmilarity_distance'):
+def similar_subjects_treatment_plot( data, sensitive_column, sensitive_attribute_values ,numrows,attr_sim_compas,simmilarity_distance='catnum_simmilarity_distance'):
     '''
     This method produce a 3d plot , (X,Y) corresponds to individuals in different set partitions . 
     Z coordinates show such pairs that being simmilar, had different treatment by your model. The closer to the
