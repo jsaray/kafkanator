@@ -1,39 +1,34 @@
+import gower
+import pandas as pd
 
+def same_prediction( ind1 , ind2 ,target_column):
+    samePrediction = True if ind1[target_column] == ind2[target_column] else False
+    return samePrediction
 
-def categorical_simmilarity_distance(ind1,ind2,customized_attr_types):
-    hashDistance = {}
-    for (k,v) in customized_attr_types.items():
-        if v == 'cat':
-            toApp = 0 if ind1[k] == ind2[k] else 1
-            hashDistance[k] = toApp
-        elif v == 'num':
-            #print ( ' value ind 1 ' , ind1[k] , ' ind2 ' , ind2[k] )
-            toApp = abs( ind1[k] - ind2[k] )
-            hashDistance[k] =  toApp 
-        elif v == 'target':
-            samePrediction = True if ind1[k] == ind2[k] else False
-    if samePrediction == None:
-        assert('You must put a target')
-    if len(hashDistance.keys()) == 0:
-        assert('NO COLUMNS')
-    return hashDistance,samePrediction
-
-def simmilarity_fairness_hash( data, sensitive_column, sensitive_attribute_values ,simmilarity_attr_hsh ,numrows,simmilarity_distance='catnum_simmilarity_distance'  ):
-    wo = data[ data[sensitive_column] == sensitive_attribute_values[0]].reset_index()
-    wo = wo.drop(['index'],axis=1)
-    ma = data[ data[sensitive_column] == sensitive_attribute_values[1]].reset_index()
-    ma = ma.drop(['index'],axis=1)
+def simmilarity_fairness_hash( data, sensitive_column, sensitive_attribute_values ,numrows,target_column,simmilarity_distance='gower'  ):
     # For the moment, only 2 values in sensitive_attribute_values allowed. if more than 2 we have to do like the correlation plots
     hDict = {}
-    for i,w in wo.iloc[0:numrows].iterrows():
-        if i % 100 == 0:
-            print ( 'Analyzing row ' , i)
-        for j,h in ma.iloc[0:numrows].iterrows():
-            if simmilarity_distance == 'catnum_simmilarity_distance':
-                reto = categorical_simmilarity_distance(w,h,simmilarity_attr_hsh)
-            #print ( ' i ', i,' j ', j , ' reto ', reto ,  ' fnlwgt W ' , w['fnlwgt'] , ' fnlwgt H ' , h['fnlwgt'] )
-            d = sum(reto[0].values())
-            hDict[(i,j)] = (d,reto[1])
+    sub_matrix = data.iloc[0:numrows,:]
+    wo = sub_matrix[ sub_matrix[sensitive_column] == sensitive_attribute_values[0]]
+    wo_target = target_column[ wo.index ]
+    print ( ' wo target ', wo_target, ' dtype ', wo_target.dtype)
+    ma = sub_matrix[ sub_matrix[sensitive_column] == sensitive_attribute_values[1]]
+    ma_target = target_column[ ma.index ]
+    print ( ' ma target ', ma_target, ' dtype ', ma_target.dtype)
+    print('getting distance matrix, data shape ')
+    if simmilarity_distance == 'gower':
+        distance_matrix = gower.gower_matrix(sub_matrix.iloc[0:numrows,:])
+    print('finish distance matrix')
     
+    list_subp1 = list(wo.index)
+    list_subp2 = list(ma.index)
+    #print ( 'list 1 ', list_subp1 , ' list 2 ', list_subp2)
+    for (i,a) in enumerate(distance_matrix):
+        for j,e in enumerate(a):
+            if i in list_subp1 and j in list_subp2:
+                reto = True if wo_target[i] == ma_target[j] else False
+                if reto == False:
+                    hDict[(i,j)] = (distance_matrix[i][j],reto)
+
     sor = sorted(hDict.items(), key=lambda row: row[1][0], reverse=False)
     return sor
