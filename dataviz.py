@@ -1,6 +1,13 @@
 from .fairness.simmilarity import simmilarity_fairness_hash
 import plotly.graph_objects as go
 import numpy as np
+import dash
+from dash import dcc, html, Input, Output
+import plotly.express as px
+import pandas as pd
+import numpy as np
+from dash import dash_table
+
 def simmilarity_fairness_3d( cleaned_hsh ) :
     # 1. Generate synthetic 3D data
     np.random.seed(42)
@@ -18,13 +25,14 @@ def simmilarity_fairness_3d( cleaned_hsh ) :
             )
         ]
     )
-    fig.update_layout(title="Interactive 3D Scatter Plot with Custom Tooltips",scene=dict(xaxis_title="Dimension X", yaxis_title="Dimension Y", zaxis_title="Dimension Z"),
+    fig.update_layout(scene=dict(xaxis_title="Dimension X", yaxis_title="Dimension Y", zaxis_title="Dimension Z"),
     width=900,
     height=700,
     margin=dict(l=0, r=0, b=0, t=40))
+    print('returning fig')
     return fig
 
-def similar_subjects_treatment_plot( data, sensitive_column, sensitive_attribute_values ,numrows,attr_sim_compas,simmilarity_distance='catnum_simmilarity_distance'):
+def similar_subjects_treatment_plot( data, sensitive_column, sensitive_attribute_values ,numrows,target_column,simmilarity_distance='gower'):
     '''
     This method produce a 3d plot , (X,Y) corresponds to individuals in different set partitions . 
     Z coordinates show such pairs that being simmilar, had different treatment by your model. The closer to the
@@ -40,7 +48,68 @@ def similar_subjects_treatment_plot( data, sensitive_column, sensitive_attribute
 
     NOTE THAT UP TO NOW IS FROM 1 TO 100 ROWS, MUST BE CHANGED !!!!!!
     '''
-    hsh = simmilarity_fairness_hash( data , sensitive_column , sensitive_attribute_values ,attr_sim_compas,numrows )
-    cleaned_hsh = [(x,y) for (x,y) in hsh if y[1] == False and y[0] <= 5 ]
+    hsh = simmilarity_fairness_hash( data , sensitive_column , sensitive_attribute_values ,numrows, target_column )
+    cleaned_hsh = [(x,y) for (x,y) in hsh if y[1] == False and y[0]<= 0.1]
     figu = simmilarity_fairness_3d( cleaned_hsh )
-    figu.show()
+    return figu
+
+def similar_subjects_dashboard( data, sensitive_column,sensitive_attribute_values,numrows,target_column,simmilarity_distance='gower'):
+    simplot = similar_subjects_treatment_plot( data , sensitive_column ,sensitive_attribute_values ,  numrows ,target_column)
+    app = dash.Dash(__name__)
+    # Define the layout with two columns
+    app.layout = html.Div(
+        style={'display': 'flex', 'height': '100vh','padding': '20px','flexDirection': 'column' },
+        children=[
+            # Column 1: Graph
+            html.Div(
+                children=[
+                    html.H1("Simmilar Subjects Plot")]
+            ),
+            html.Div(
+                style={'overflow-x': 'auto','vertical-align':'center'},
+                children=[
+                    html.H3("Data for Hovered Point(s)"),
+                    html.Div(id='table-container', children=[
+                        html.P("Hover over a point in the 3D scatter plot to see related data.")
+                ])
+            ]
+            ),
+            html.Div(
+                children=[
+                    dcc.Graph(
+                        id='scatter3d',
+                        figure=simplot,
+                        style={'height': '50vh'}
+                    )
+                ]
+            )
+        ]
+    )
+    # Callback to update the table based on hover data
+    @app.callback(
+        Output('table-container', 'children'),
+        Input('scatter3d', 'hoverData')
+    )
+    def update_table(hoverData):
+        if hoverData is None:
+            return html.P("Hover over a point in the 3D scatter plot to see related data.")
+        reo = np.append(['ID'],data.columns) 
+        reorder = np.append(reo,['Target'])
+        completeD = data.iloc[0:numrows,:].assign(Target=target_column)
+        completeData = completeD.assign(ID=completeD.index)
+        completeData = completeData.reindex(reorder,axis='columns')
+        x=hoverData['points'][0]['x']
+        y=hoverData['points'][0]['y']
+        z=hoverData['points'][0]['z']
+        subp1 = completeData[completeData[sensitive_column] == sensitive_attribute_values[0] ]
+        subp2 = completeData[completeData[sensitive_column] == sensitive_attribute_values[1] ]
+        row1 = subp1[subp1['ID'] == x].iloc[0,:]
+        row2 = subp2[subp2['ID'] == y].iloc[0,:]
+        datatod = [row1.to_dict(),row2.to_dict()]
+        allc = completeData.columns
+        data_t = dash_table.DataTable( style_table={'overflowX': 'auto'},columns = [{"name": i, "id": i} for i in completeData.columns] , data=datatod)
+        try:
+            return html.Div([data_t])
+        except (IndexError, KeyError):
+            return html.P("Error retrieving data for the hovered point.")
+    return app
