@@ -1,4 +1,5 @@
 from .fairness.simmilarity import simmilarity_fairness_hash
+from sklearn.calibration import calibration_curve, CalibrationDisplay
 import plotly.graph_objects as go
 import numpy as np
 import dash
@@ -7,6 +8,8 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 from dash import dash_table
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 def simmilarity_fairness_3d( cleaned_hsh ) :
     # 1. Generate synthetic 3D data
@@ -113,3 +116,22 @@ def similar_subjects_dashboard( data, sensitive_column,sensitive_attribute_value
         except (IndexError, KeyError):
             return html.P("Error retrieving data for the hovered point.")
     return app
+
+
+def reliability_diagram_plot ( data,sensitive_column,sensitive_attribute_values,predicted_column,real_column,bins=10 ):
+    fig = plt.figure(figsize=(10, 10))
+    gs = GridSpec(1, 1)
+    colors = plt.get_cmap("Dark2")
+    ax_calibration_curve = fig.add_subplot(gs[:1, :1])
+    calibration_displays = {}
+    for sensitive_attribute in sensitive_attribute_values:
+        subp = data[  data[sensitive_column] == sensitive_attribute ]
+        subp_real = subp[ real_column ]
+        subp_preds = subp[predicted_column]
+        prob_true_subp, prob_pred_subp = calibration_curve(subp_real, subp_preds, n_bins=10)
+        display = CalibrationDisplay.from_predictions(subp_real, subp_preds,n_bins=10,ax=ax_calibration_curve,name=sensitive_attribute)
+        calibration_displays[sensitive_attribute] = display
+
+    ax_calibration_curve.grid()
+    ax_calibration_curve.set_title("Reliability Diagrams")    
+    return fig
