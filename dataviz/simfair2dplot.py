@@ -1,7 +1,3 @@
-
-
-from .attentionscore import fraction_score
-
 from .creator import FairplotCreator
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,7 +22,7 @@ class SimilarityFairness2DPlot(FairplotCreator):
         print ( ' data shape ', data.shape)
 
         for (x, y) in spatial_order:
-            data[x[0], x[1]] = fraction_score(y[1], y[0])
+            data[x[0], x[1]] = attention_score(y[1], y[0])
             auxdata[x[0], x[1]] = y[1]
 
         fig = go.Figure(data=go.Heatmap(z=data,customdata=auxdata,colorscale='Reds',hovertemplate='X: %{x}<br>Y: %{y}<br>D: %{customdata} <br>Score: %{z}<extra></extra>'))

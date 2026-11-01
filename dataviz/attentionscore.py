@@ -1,6 +1,11 @@
 
-def fraction_sum_score(x,y):
-    return 1 / (x + (1 / y))
+def score_by_metric(arr,reverse=False):
+    return sorted(arr,reverse=reverse)
 
-def fraction_score(x,y):
-    return x / y
+def score_by_lambda(arr,func,reverse=False):
+    return sorted(arr,key=func,reverse=reverse)
+
+
+
+
+
