@@ -1,2 +1,3 @@
 from .simmilarity import similarity_fairness_hash
 from .metrics import fairness_metrics_table
+from .counterfactual import generate_counterfactual_individuals
