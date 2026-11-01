@@ -1,4 +1,4 @@
-from .fairness.simmilarity import similarity_fairness_hash
+
 from sklearn.calibration import calibration_curve, CalibrationDisplay
 import plotly.graph_objects as go
 import numpy as np
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from sklearn.metrics import brier_score_loss
 from .calibration.metrics import ece
-from .dataviz.attentionscore import fraction_score
+from .fairness.individual.metrics import individual_consistence
 def similarity_fairness_3d( cleaned_hsh ) :
     # 1. Generate synthetic 3D data
     np.random.seed(42)
@@ -39,7 +39,7 @@ def similarity_fairness_3d( cleaned_hsh ) :
     print('returning fig')
     return fig
 
-def similar_subjects_treatment_plot( data, numrows,target_column,fairplottype,similarity_distance='gower',attention_score=fraction_score):
+def individual_fairness_plot( data,target_column,fairplottype,preprocessor,if_metric=individual_consistence,epsilon=None,L=None,predictor=None,sensitive_columns=[]):
     '''
     This method produce a 3d plot , (X,Y) corresponds to individuals in different set partitions . 
     Z coordinates show such pairs that being simmilar, had different treatment by your model. The closer to the
@@ -55,19 +55,29 @@ def similar_subjects_treatment_plot( data, numrows,target_column,fairplottype,si
 
     NOTE THAT UP TO NOW IS FROM 1 TO 100 ROWS, MUST BE CHANGED !!!!!!
     '''
-    hsh = similarity_fairness_hash( data , numrows, target_column  )
-  
-    cleaned_hsh = [(x,y) for (x,y) in hsh if y[0]<= 0.1]
-    print(' cleaned hash length ', len(cleaned_hsh))
-    figu = fairplottype.get_figure( cleaned_hsh,attention_score)
+    print ( ' amount of rows ', data.shape[0], ' predictor ', predictor)
+    hsh = preprocessor.preprocess( data ,  target_column ,predictor ,sensitive_columns)
+    print (' Lenght of pairs with distance measures', len(hsh))
+    # By putting condition y[0] < 0.1, we are filtering out pairs of individuals that are too dissimilar 
+    # (i.e., their distance is greater than 0.1). This allows us to focus on pairs that are more similar and may have 
+    # different treatment outcomes, which is the main concern in similarity fairness analysis.
+    if epsilon != None:
+        cleaned_hsh = [(x,y) for (x,y) in hsh if y[0] < epsilon]
+    else:
+        cleaned_hsh = hsh
+    list_hsh = sorted(list(cleaned_hsh.items()), key=lambda row: row[0], reverse=True)
+    print(' cleaned hash length ', len(cleaned_hsh), ' top 10 begin ', list_hsh[0:10] , 'top 10 end ', list_hsh[-10:])
+    print(' the if metric to sent ',if_metric)
+    figu = fairplottype.get_figure( cleaned_hsh,if_metric)
     return figu
 
-def similar_subjects_dashboard( data,numrows,target_column,fairplottype,similarity_distance='gower',transformation=None,attention_score=None):
-    simplot = similar_subjects_treatment_plot( data ,  numrows ,target_column,fairplottype,similarity_distance=similarity_distance,attention_score=attention_score)
+def individual_fairness_dashboard( data,target_column,fairplottype,preprocessor,if_metric=None,epsilon=None,L=None,predictor=None,sensitive_columns=[]):
+    print ( ' predictor ',predictor)
+    simplot = individual_fairness_plot( data ,target_column,fairplottype,preprocessor,if_metric=if_metric,L=L,predictor=predictor,sensitive_columns=sensitive_columns)
     app = dash.Dash(__name__)
     # Define the layout with two columns
     app.layout = html.Div(
-        style={'display': 'flex', 'height': '100vh','padding': '20px','flexDirection': 'colunumn' },
+        style={'display': 'flex', 'height': '250vh','padding': '20px','flexDirection': 'column' },
         children=[
             # Column 1: Graph
             html.Div(
@@ -88,7 +98,7 @@ def similar_subjects_dashboard( data,numrows,target_column,fairplottype,similari
                     dcc.Graph(
                         id='scatter3d',
                         figure=simplot,
-                        style={'height': '50vh'}
+                        style={'height':'100vh'}
                     )
                 ]
             )
@@ -104,7 +114,7 @@ def similar_subjects_dashboard( data,numrows,target_column,fairplottype,similari
             return html.P("Hover over a point in the 3D scatter plot to see related data.")
         reo = np.append(['ID'],data.columns) 
         reorder = np.append(reo,['Target'])
-        completeD = data.iloc[0:numrows,:].assign(Target=target_column)
+        completeD = data.assign(Target=target_column)
         completeData = completeD.assign(ID=completeD.index)
         completeData = completeData.reindex(reorder,axis='columns')
         x=hoverData['points'][0]['x']
