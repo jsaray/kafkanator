@@ -1,1 +1,2 @@
 from .simfair3dplot import SimilarityFairness3DPlot
+from .reliabilityplot import reliability_diagram_plot 
