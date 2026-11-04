@@ -58,7 +58,5 @@ def default_row_highlighting(s):
     if 'PREVALENCE' in inde :
         return compareRatio(d,s)
     else:
-        print ( 'd is ', str(d))
         if type(d) == float or isinstance(d,np.floating ):
-            print ( ' in if')
             return compareSubstraction(d,s)
