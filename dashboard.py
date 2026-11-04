@@ -13,6 +13,7 @@ from matplotlib.gridspec import GridSpec
 from sklearn.metrics import brier_score_loss
 from .calibration.metrics import ece
 from .fairness.individual.metrics import individual_consistence
+import re
 def similarity_fairness_3d( cleaned_hsh ) :
     # 1. Generate synthetic 3D data
     np.random.seed(42)
@@ -56,7 +57,7 @@ def individual_fairness_plot( data,target_column,fairplottype,preprocessor,if_me
     NOTE THAT UP TO NOW IS FROM 1 TO 100 ROWS, MUST BE CHANGED !!!!!!
     '''
     print ( ' amount of rows ', data.shape[0], ' predictor ', predictor)
-    hsh = preprocessor.preprocess( data ,  target_column ,predictor ,sensitive_columns)
+    hsh , kndata , newindex = preprocessor.preprocess( data ,  target_column ,predictor ,sensitive_columns)
     print (' Lenght of pairs with distance measures', len(hsh))
     # By putting condition y[0] < 0.1, we are filtering out pairs of individuals that are too dissimilar 
     # (i.e., their distance is greater than 0.1). This allows us to focus on pairs that are more similar and may have 
@@ -69,21 +70,21 @@ def individual_fairness_plot( data,target_column,fairplottype,preprocessor,if_me
     print(' cleaned hash length ', len(cleaned_hsh), ' top 10 begin ', list_hsh[0:10] , 'top 10 end ', list_hsh[-10:])
     print(' the if metric to sent ',if_metric)
     figu = fairplottype.get_figure( cleaned_hsh,if_metric)
-    return figu
+    return (figu , kndata, newindex)
 
-def individual_fairness_dashboard( data,target_column,fairplottype,preprocessor,if_metric=None,epsilon=None,L=None,predictor=None,sensitive_columns=[]):
+def individual_fairness_dataviz( data,target_column,fairplottype,preprocessor,if_metric=None,epsilon=None,L=None,predictor=None,sensitive_columns=[]):
     print ( ' predictor ',predictor)
-    simplot = individual_fairness_plot( data ,target_column,fairplottype,preprocessor,if_metric=if_metric,L=L,predictor=predictor,sensitive_columns=sensitive_columns)
+    simplot, kndata,hsh = individual_fairness_plot( data ,target_column,fairplottype,preprocessor,if_metric=if_metric,L=L,predictor=predictor,sensitive_columns=sensitive_columns)
+    invhsh = {}
+    for x,y in hsh.items():
+        invhsh[y] = x
+    print ( 'kndata is ', kndata, ' shape ', kndata.shape )
+    #data.reset_index(inplace=True)
     app = dash.Dash(__name__)
     # Define the layout with two columns
     app.layout = html.Div(
-        style={'display': 'flex', 'height': '250vh','padding': '20px','flexDirection': 'column' },
+        style={'display': 'flex', 'height': '500vh','padding': '20px','flexDirection': 'row' },
         children=[
-            # Column 1: Graph
-            html.Div(
-                children=[
-                    html.H1("Simmilar Subjects Plot")]
-            ),
             html.Div(
                 style={'overflow-x': 'auto','vertical-align':'center'},
                 children=[
@@ -112,27 +113,25 @@ def individual_fairness_dashboard( data,target_column,fairplottype,preprocessor,
     def update_table(hoverData):
         if hoverData is None:
             return html.P("Hover over a point in the 3D scatter plot to see related data.")
+        hoverlabel = hoverData['points'][0]['customdata']
+        x=hoverData['points'][0]['x']
+        regei = r'XVALUE (\d+)'
         reo = np.append(['ID'],data.columns) 
         reorder = np.append(reo,['Target'])
+        realx_extraction = re.findall(regei,hoverlabel)[0]
+        rows_to_display = kndata[int(hsh[int(realx_extraction)])]
+        perm = [invhsh[i] for i in rows_to_display]
         completeD = data.assign(Target=target_column)
         completeData = completeD.assign(ID=completeD.index)
         completeData = completeData.reindex(reorder,axis='columns')
-        x=hoverData['points'][0]['x']
-        y=hoverData['points'][0]['y']
-        z=hoverData['points'][0]['z']
-        row1 = completeData[completeData['ID'] == x].iloc[0,:]
-        row2 = completeData[completeData['ID'] == y].iloc[0,:]
-
-        if row1["Target"] == row2["Target"]:
-            return html.P("The hovered points have the same target value, click on a dark zone to inspect possible violations to similarity fairness.")
-        else:
-            datatod = [row1.to_dict(),row2.to_dict()]
-            allc = completeData.columns
-            data_t = dash_table.DataTable( style_table={'overflowX': 'auto'},columns = [{"name": i, "id": i} for i in completeData.columns] , data=datatod)
-            try:
-                return html.Div([data_t])
-            except (IndexError, KeyError):
-                return html.P("Error retrieving data for the hovered point.")
+        rows = completeData.iloc[perm]
+        datatod = rows.to_dict(orient='records')
+        allc = completeData.columns
+        data_t = dash_table.DataTable( style_table={'overflowX': 'auto'},columns = [{"name": i, "id": i} for i in completeData.columns] , data=datatod)
+        try:
+            return html.Div([data_t])
+        except (IndexError, KeyError):
+            return html.P("Error retrieving data for the hovered point.")
     return app
 
 def reliability_diagram_plot ( data,sensitive_column,sensitive_attribute_values,predicted_column,real_column,bins=10 ):
