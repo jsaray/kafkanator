@@ -1,5 +1,5 @@
 
-from sklearn.calibration import calibration_curve, CalibrationDisplay
+
 import plotly.graph_objects as go
 import numpy as np
 import dash
@@ -8,10 +8,6 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 from dash import dash_table
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from sklearn.metrics import brier_score_loss
-from .calibration.metrics import ece
 from .fairness.individual.metrics import individual_consistence
 import re
 def similarity_fairness_3d( cleaned_hsh ) :
@@ -56,9 +52,9 @@ def individual_fairness_plot( data,target_column,fairplottype,preprocessor,if_me
 
     NOTE THAT UP TO NOW IS FROM 1 TO 100 ROWS, MUST BE CHANGED !!!!!!
     '''
-    print ( ' amount of rows ', data.shape[0], ' predictor ', predictor)
-    hsh , kndata , newindex = preprocessor.preprocess( data ,  target_column ,predictor ,sensitive_columns)
-    print (' Lenght of pairs with distance measures', len(hsh))
+    #print ( ' amount of rows ', data.shape[0], ' predictor ', predictor)
+    hsh , inds , prpcsdata = preprocessor.preprocess( data ,  target_column ,predictor ,sensitive_columns)
+    #print (' Lenght of pairs with distance measures', len(hsh))
     # By putting condition y[0] < 0.1, we are filtering out pairs of individuals that are too dissimilar 
     # (i.e., their distance is greater than 0.1). This allows us to focus on pairs that are more similar and may have 
     # different treatment outcomes, which is the main concern in similarity fairness analysis.
@@ -67,19 +63,15 @@ def individual_fairness_plot( data,target_column,fairplottype,preprocessor,if_me
     else:
         cleaned_hsh = hsh
     list_hsh = sorted(list(cleaned_hsh.items()), key=lambda row: row[0], reverse=True)
-    print(' cleaned hash length ', len(cleaned_hsh), ' top 10 begin ', list_hsh[0:10] , 'top 10 end ', list_hsh[-10:])
-    print(' the if metric to sent ',if_metric)
+    #print(' cleaned hash length ', len(cleaned_hsh), ' top 10 begin ', list_hsh[0:10] , 'top 10 end ', list_hsh[-10:])
+    #print(' the if metric to sent ',if_metric)
     figu = fairplottype.get_figure( cleaned_hsh,if_metric)
-    return (figu , kndata, newindex)
+    return (figu , inds, prpcsdata)
 
-def individual_fairness_dataviz( data,target_column,fairplottype,preprocessor,if_metric=None,epsilon=None,L=None,predictor=None,sensitive_columns=[]):
-    print ( ' predictor ',predictor)
-    simplot, kndata,hsh = individual_fairness_plot( data ,target_column,fairplottype,preprocessor,if_metric=if_metric,L=L,predictor=predictor,sensitive_columns=sensitive_columns)
-    invhsh = {}
-    for x,y in hsh.items():
-        invhsh[y] = x
-    print ( 'kndata is ', kndata, ' shape ', kndata.shape )
-    #data.reset_index(inplace=True)
+def individual_fairness_dataviz(data,target_column,fairplottype,preprocessor,if_metric=None,epsilon=None,L=None,predictor=None,sensitive_columns=[]):
+    simplot, inds, preprcsdata = individual_fairness_plot(data,target_column,fairplottype,preprocessor,if_metric=if_metric,L=L,predictor=predictor,sensitive_columns=sensitive_columns)
+    print ( 'TYPE ', type(preprcsdata))
+    print ( 'TYPE ', type(inds))
     app = dash.Dash(__name__)
     # Define the layout with two columns
     app.layout = html.Div(
@@ -119,47 +111,27 @@ def individual_fairness_dataviz( data,target_column,fairplottype,preprocessor,if
         reo = np.append(['ID'],data.columns) 
         reorder = np.append(reo,['Target'])
         realx_extraction = re.findall(regei,hoverlabel)[0]
-        rows_to_display = kndata[int(hsh[int(realx_extraction)])]
-        perm = [invhsh[i] for i in rows_to_display]
+        rows_to_display = inds[int(realx_extraction)]
         completeD = data.assign(Target=target_column)
         completeData = completeD.assign(ID=completeD.index)
         completeData = completeData.reindex(reorder,axis='columns')
-        rows = completeData.iloc[perm]
+        rows = preprcsdata.iloc[rows_to_display]
         datatod = rows.to_dict(orient='records')
         allc = completeData.columns
-        data_t = dash_table.DataTable( style_table={'overflowX': 'auto'},columns = [{"name": i, "id": i} for i in completeData.columns] , data=datatod)
-        try:
-            return html.Div([data_t])
-        except (IndexError, KeyError):
-            return html.P("Error retrieving data for the hovered point.")
+        if len(inds) != 0 : 
+            data_t = dash_table.DataTable( style_table={'overflowX': 'auto'},columns = [{"name": i, "id": i} for i in preprcsdata.columns] , data=datatod)
+            try:
+                return html.Div([data_t])
+            except (IndexError, KeyError):
+                return html.P("Error retrieving data for the hovered point.")
+        else:
+            data_t = dash_table.DataTable( style_table={'overflowX': 'auto'},columns = [{"name": i, "id": i} for i in ['Nothing to visualize yet']] , data=[])
+            try:
+                return html.Div([data_t])
+            except (IndexError, KeyError):
+                return html.P("Error retrieving data for the hovered point.")
+
     return app
 
-def reliability_diagram_plot ( data,sensitive_column,sensitive_attribute_values,predicted_column,real_column,bins=10 ):
-    fig = plt.figure(figsize=(10, 10))
-    gs = GridSpec(1, 1)
-    colors = plt.get_cmap("Dark2")
-    ax_calibration_curve = fig.add_subplot(gs[:1, :1])
-    calibration_displays = {}
-    ecestr = []
-    brierstr = []
-    for sensitive_attribute in sensitive_attribute_values:
-        subp = data[  data[sensitive_column] == sensitive_attribute ]
-        subp_real = subp[ real_column ]
-        subp_preds = subp[predicted_column]
-        prob_true_subp, prob_pred_subp = calibration_curve(subp_real, subp_preds, n_bins=10)
-        ece_val = ece(list(zip(subp_preds,subp_real)),n_bins=10)
-        #print ( 'true ', prob_true_subp[0:10] , ' pred ', prob_pred_subp[0:10])
-        brier_val = brier_score_loss(subp_real, subp_preds ,pos_label=1)
-        eces = ' ECE ' + str(sensitive_attribute) + "=" + str(ece_val) + ' ' 
-        ecestr.append(eces)
 
-        briers = ' BRIER ' + str(sensitive_attribute) + "=" + str(brier_val) + ' ' 
-        brierstr.append(briers)
-        display = CalibrationDisplay.from_predictions(subp_real, subp_preds,n_bins=10,ax=ax_calibration_curve,name=sensitive_attribute)
-        calibration_displays[sensitive_attribute] = display
-
-    ax_calibration_curve.grid()
-    title = "Reliability Diagrams " + ' '.join(ecestr) + '\n' + ' '.join(brierstr)
-    ax_calibration_curve.set_title(title)    
-    return fig
 
