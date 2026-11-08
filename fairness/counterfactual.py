@@ -5,6 +5,18 @@ import random
 import copy
 
 def get_counterfactual_values(df,i,sensitive_columns):
+    ''' This method first computes the universe U of possible sensitive column values combinations,
+    this is the set { (s1,s2, ... , sn) such that s1 in S1, s2 in S2, ... sn in Sn  } (line 13). 
+    After this, build the sensitive attribute Si tuple of individual i (line 16-17).
+    After this computes and retrieve set difference between U and the individual sensitive attributes Si, U - Si (line 19).
+    The returned value is the effective domain of counterfactual individuals different than i.
+    Parameters:
+        df an individual of this dataframe will be used for compute counterfactual individuals
+        i position of the row we want to compute counterfactual individuals.
+        sensitive_columns a set S of sensitive columns .
+    Returns
+    U - Si
+    '''
     ctf_universe = set( [ tuple(t) for t in df[sensitive_columns].values ] )
     individual = df.iloc[i,:].to_dict()
     indiv_project_sens_cols = ()
@@ -16,7 +28,17 @@ def get_counterfactual_values(df,i,sensitive_columns):
     return difference_set
 
 def generate_counterfactual_individuals(df,i,sensitive_columns):
-    # step 1 : generate the conterfactual universe.
+    '''
+        This method first compute the set of possible counterfactual sensitive values for an individual (line 35).
+        Returned type is a set S of cardinality n.
+        After this, the method creates n individuals, each one having sensitive attributes according to one element in 
+        element S. The created individuals have non sensitive attributes unchanged.
+        
+        Parameters :
+        df dataframe from individual i originates.
+        i position of the individual we are going to compute counterf individuals.
+        sensitive_columns the set of sensitive columns.
+    '''
     conterf_indivs = []
     cf_values = get_counterfactual_values(df,i,sensitive_columns)
     ind_df = df.iloc[i,:]
