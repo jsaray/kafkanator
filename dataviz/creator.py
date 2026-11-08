@@ -16,8 +16,3 @@ class IndividualFairnessPreprocessorCreator(ABC):
     @abstractmethod
     def factory_method(self):
         pass
-
-    def abstract_preprocessor_creation(self):
-        product = self.factory_method()
-        figure = product.preprocess()
-        return figure
