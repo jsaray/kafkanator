@@ -24,7 +24,7 @@ class RankingAgePlot(FairplotCreator) :
     # Cleaned hsh is a hash containing : 
     #hDict[i] = (target_column[i], targets , age  )
     def get_figure(self, cleaned_hsh,if_metric):
-        print(' len of hash  ' , len(list(cleaned_hsh.items())))
+        #print(' len of hash  ' , len(list(cleaned_hsh.items())))
         datapre = []
         cdata = []
         # En cleaned_hsh estan {(id1,id2) : (d,(ti,tj)))}
@@ -46,13 +46,13 @@ class RankingAgePlot(FairplotCreator) :
                 return 100
 
         order_score_age = score_by_lambda ( datapre ,myrank )
-        print ( ' result of ranking by cons score and age ' , order_score_age[0:15])
+        #print ( ' result of ranking by cons score and age ' , order_score_age[0:15])
         by_cons_score_age  = [x for x,y,z in order_score_age  ]
         
         cdata = [(x,z) for x,y,z in order_score_age ]
         ys = [y for x,y,z in order_score_age ]
-        print ( ' The DISTINCT consistency score is ', list(set(ys)))
-        print('ORDER BY CONSISTENCY AND AGE agrrement ',cdata[0:10])
+        #print ( ' The DISTINCT consistency score is ', list(set(ys)))
+        #print('ORDER BY CONSISTENCY AND AGE agrrement ',cdata[0:10])
         #fig = go.Figure(data=go.Scatter(x=list(range(0,len(order_score_age))),y=ys,customdata=cdata,hovertemplate='ID %{customdata}   <extra></extra>'))
         visuhsh = [(x,y,get_age_interval(z)) for x, y ,z in order_score_age]
         l_icicle = []
@@ -61,18 +61,15 @@ class RankingAgePlot(FairplotCreator) :
             l_icicle.append(row)
         
         df_icicle = pd.DataFrame(data=l_icicle,columns=['individual','consistency_score','age_interval','population'])
-        #df_icicle.to_csv ( 'kfkntr_output_barstack.csv' ) 
+        df_icicle.to_csv ( 'kfkntr_output_barstack.csv' ) 
         result = df_icicle.groupby(['consistency_score', 'age_interval'])['population'].sum().reset_index()
         ordered_result = result.sort_values(by=['consistency_score','age_interval'])
         #print('the types ', result.dtypes)
-        print(' top 10 ordered result ', ordered_result.iloc[0:10,:])
+        #print(' top 10 ordered result ', ordered_result.iloc[0:10,:])
         fig = px.bar(ordered_result, x="consistency_score", y="population", color="age_interval",title="Individual consistency score and age distribution", color_continuous_scale=["orange", "red", "green", "blue","purple"])
         #fig = px.icicle(df_icicle, path=[px.Constant("Consistency score"), 'consistency_score', 'age_interval'], values='population',color='age_interval',color_continuous_scale='RdBu')
-        
-        
         fig.layout.height = 750
         fig.layout.width = 750
-
         fig.write_image("fig1.png")
         #fig.update_layout(xaxis=dict(title=dict(text="Individuals")),yaxis=dict(title=dict(text="Individual consistence")))
         #fig.update_layout(xaxis=dict(tickmode='linear',tick0=0,dtick=1000))
