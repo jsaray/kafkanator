@@ -202,11 +202,11 @@ def fairness_metrics_table(dataset,sensitive_attribute,predict_column,reality_co
     equalized_odds(dataset,sensitive_attribute,predict_column,reality_column),
     disparate_impact(dataset,sensitive_attribute,predict_column,reality_column))
     sp_strkeys = transform_dict_keys_to_str(sp)
-    print ('ks ', sp_strkeys)
+    #print ('ks ', sp_strkeys)
     lcols = list(sp_strkeys.keys())
-    print ( ' lcosl ', lcols)
+    #print ( ' lcosl ', lcols)
     df = pd.DataFrame(index=indices,columns=lcols)
-    print ('sta party output ',sp)
+    #print ('sta party output ',sp)
     for (k,v) in sp_strkeys.items():
         df.loc['DEMOGRAPHIC PARITY - P1',k] = sp_strkeys[k]
     eo_strkeys = transform_dict_keys_to_str(eo)

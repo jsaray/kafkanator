@@ -26,8 +26,6 @@ class ConsistencyPlot(FairplotCreator) :
             k_neighbords = y[1].values
 
             ic = if_metric(  y[0]  ,k_neighbords)   
-            if x == 521:
-                print ( ' kneigh ', k_neighbords, 'proper targetg ', y[0],'the ic is ',ic )
             sa_gap = y[2]
             individual_consistency.append( ic )
             multi_key.append ( (x,ic,sa_gap) )
