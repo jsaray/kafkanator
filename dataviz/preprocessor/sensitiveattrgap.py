@@ -5,9 +5,10 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import DistanceMetric
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
-
+from collections import Counter
 import numpy as np
 import csv
+import pandas as pd
 class SensitiveAttrGapPreprocessor(IndividualFairnessPreprocessorCreator):
 
     def __init__(self):
@@ -15,6 +16,8 @@ class SensitiveAttrGapPreprocessor(IndividualFairnessPreprocessorCreator):
         self.algorithm = 'ball_tree'
         self.d = DistanceMetric.get_metric('euclidean')
         self.scalator = StandardScaler()
+        self.label_encoders = {}
+        self.categorical_columns = ['workclass', 'education',  'occupation', 'relationship', 'race', 'sex','marital-status','native-country','income']
 
     def parameters(self,param):
         return {'distance' : 'minkowski','k':5,'algorithm':'ball_tree'}[param]
@@ -29,24 +32,19 @@ class SensitiveAttrGapPreprocessor(IndividualFairnessPreprocessorCreator):
         return m
 
     def encode_columns(self,data,target):
-        data['race'] = data['race'].apply(lambda x : 1 if x=='White' else 0 )
-        categorical_columns = ['workclass', 'education',  'occupation', 'relationship', 'race', 'sex','marital-status','native-country','income']
+        data['race'] = data['race'].apply(lambda x : 'Caucasian' if x=='White' else 'Not Caucasian' )
         data['income'] = target
-        # Create an instance of LabelEncoder
-        label_encoder = LabelEncoder()
-
-        # Encode each categorical column and create new feature columns
-        for col in categorical_columns:
-            encoded_col_name = f"{col}_encoded"
-            data[encoded_col_name] = label_encoder.fit_transform(data[col])
-
-        print('Before NA dropping ',data.shape)
         data = data.dropna()
-        print('After NA dropping ',data.shape)
         reduced = data
         for x in data.columns : 
             reduced = reduced[reduced[x] != '?']
         print('After ? dropping ',reduced.shape) 
+        # Create an instance of LabelEncoder
+        # Encode each categorical column and create new feature columns
+        for col in self.categorical_columns:
+            encoded_col_name = f"{col}_encoded"
+            self.label_encoders[encoded_col_name] = LabelEncoder()
+            reduced[encoded_col_name] = self.label_encoders[encoded_col_name].fit_transform(reduced[col])
         reduced.sort_values(by=['age', 'workclass', 'fnlwgt', 'education', 'education-num',
        'marital-status', 'occupation', 'relationship', 'race', 'sex',
        'capital-gain', 'capital-loss', 'hours-per-week', 'native-country',
@@ -106,4 +104,17 @@ class SensitiveAttrGapPreprocessor(IndividualFairnessPreprocessorCreator):
                     gaps.append(g)
                     newarr.append(inds)
                     hDict[i] = (y_enc[i], targets.values, g  )
-        return hDict
+        rdata = {}
+        print ( ' XENC columns ',X_enc.columns)
+        for col in X_enc.columns:
+            print ('the col',col)
+            if '_encoded' in col:
+                newname = col.replace ( '_encoded','') 
+                print ( ' IN DECODING ' , list(Counter(X_enc[col].values)))
+                rdata[newname] = self.label_encoders[col].inverse_transform(X_enc[col].values)
+            else:
+                rdata[col] = X_enc[col].values
+        rdata['Target'] = self.label_encoders["income_encoded"].inverse_transform(y_enc.values)
+        returneddata = pd.DataFrame(rdata)
+        return hDict,indices_norder,returneddata
+        # (hDict ,indices_norder,returneddata)
